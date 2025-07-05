@@ -1,16 +1,23 @@
-# Use official Node.js runtime as base
-FROM node:18
+# 1) Build stage
+FROM node:18 AS build
 
-# Set working directory
+# set working dir
 WORKDIR /usr/src/app
 
-# Copy package.json and install dependencies
+# only copy package manifests and install deps
 COPY package*.json ./
-RUN npm install
+RUN npm ci
 
-# Copy app source code
+# copy the rest of the source & build
 COPY . .
+RUN npm run build
 
-# Expose port and define default command
-EXPOSE 8080
-CMD ["npm", "start"]
+# 2) Production stage
+FROM nginx:alpine
+
+# copy the build output to nginx’s public folder
+COPY --from=build /usr/src/app/build /usr/share/nginx/html
+
+# expose port 80 and start nginx
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
